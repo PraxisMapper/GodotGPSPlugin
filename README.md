@@ -75,7 +75,9 @@ This is set to report no faster than every 500ms or 0.5 meters.
 ## signal onLocationUpdates(Dictionary)
 The signal emitted by the plugin when a location update is detected.
 Sends back a dictionary with the following keys:
+
 latitude, longitude, accuracy, altitude, verticalAccuracyMeters, speed, time, bearing
+
 NOTE: bearing will indicate the actual direction of movement, whereas the value from onHeadingChange 
 reflects the direction the device is facing.
 
