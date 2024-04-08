@@ -184,7 +184,7 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener, Se
             locationDictionary["altitude"] = altitude
             locationDictionary["speed"] = speed
             locationDictionary["time"] = time
-            locationDictionary["bearing"] = longitude
+            locationDictionary["bearing"] = bearing
             emitSignal(locationUpdateSignal.name, locationDictionary)
 
     }
