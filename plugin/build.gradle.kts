@@ -36,6 +36,7 @@ android {
 
 dependencies {
     implementation("org.godotengine:godot:4.2.0.stable")
+    implementation("androidx.core:core:1.12.0")
     // TODO: Additional dependencies should be added to export_plugin.gd as well.
 }
 

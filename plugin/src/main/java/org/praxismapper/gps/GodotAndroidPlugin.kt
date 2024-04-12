@@ -2,9 +2,13 @@ package org.praxismapper.gps
 
 import android.annotation.TargetApi
 import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -17,28 +21,42 @@ import android.os.IBinder
 import android.util.Log
 import android.view.Display
 import android.view.View
+import androidx.core.app.NotificationCompat
 import org.godotengine.godot.Dictionary
 import org.godotengine.godot.Godot
+import org.godotengine.godot.GodotLib
 import org.godotengine.godot.plugin.GodotPlugin
 import org.godotengine.godot.plugin.SignalInfo
 import org.godotengine.godot.plugin.UsedByGodot
 
-var gravity:FloatArray = floatArrayOf(0f,0f,0f)
-var magnetic:FloatArray = floatArrayOf(0f,0f,0f)
-var R:FloatArray = floatArrayOf(0f,0f,0f,0f,0f,0f,0f,0f,0f)
-var R2:FloatArray = floatArrayOf(0f,0f,0f,0f,0f,0f,0f,0f,0f)
-var I:FloatArray = floatArrayOf(0f,0f,0f,0f,0f,0f,0f,0f,0f)
-var lastEmittedHeadingTime:Long = 0
-var heading:Int = 0
-
 class TestForegroundService: Service() {
+
+    @TargetApi(Build.VERSION_CODES.Q)
     override fun onBind(p0: Intent?): IBinder? {
         TODO("Not yet implemented")
     }
 
+    @TargetApi(Build.VERSION_CODES.Q)
+    override fun onCreate(){
+        Log.d("PraxisForeground", "Service called, activating foreground")
+        val channel = NotificationChannel(
+            "864",
+            "PraxisForegroundChannel",
+            NotificationManager.IMPORTANCE_HIGH
+        )
+        channel.description = "PraxisMapper channel for foreground service notification"
+
+        var notificationManager = getSystemService<NotificationManager>(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
+
+        var note = NotificationCompat.Builder(this, "864").setSmallIcon(R.drawable.ic_notify_icon).build()
+        note.category = Notification.CATEGORY_NAVIGATION
+        startForeground(864, note, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        Log.d("PraxisForeground", "Call completed")
+    }
 }
 
-class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener, SensorEventListener {
+class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener {
 
     //override fun getPluginName() = BuildConfig.GODOT_PLUGIN_NAME
 
@@ -59,7 +77,6 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener, Se
 
     private lateinit var locman: LocationManager
     private var loc: Location? = null
-    private lateinit var sensorman: SensorManager
 
     private val locationUpdateSignal =
         SignalInfo("onLocationUpdates", Dictionary::class.java)
@@ -67,64 +84,13 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener, Se
         SignalInfo("onLastKnownLocation", Dictionary::class.java)
     private val errorSignal =
         SignalInfo("onLocationError", Int::class.javaObjectType, String::class.java)
-    private val headingSignal =
-        SignalInfo("onHeadingChange", Int::class.javaObjectType)
 
     @TargetApi(Build.VERSION_CODES.S)
     override fun onMainCreate(activity: Activity?): View? {
         Log.d("PraxisGPS", "Entered OnMainCreate")
+        //NOTE: these might already exist on the godot object passed in to the constructor.
         locman = activity?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        sensorman = activity?.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        var compassAccel = sensorman.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        if (compassAccel != null)
-        {
-            Log.d("PraxisGPS", "RotationVector found")
-            sensorman.registerListener(this, compassAccel, SensorManager.SENSOR_DELAY_NORMAL, 1000000);
-        }
-        else
-        {
-            Log.d("PraxisGPS", "Rotation sensor NOT found")
-        }
-
-        var compassMagnetic = sensorman.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        if (compassMagnetic != null)
-        {
-            Log.d("PraxisGPS", "Magnetic sensor found")
-            sensorman.registerListener(this, compassMagnetic, SensorManager.SENSOR_DELAY_NORMAL, 1000000);
-        }
-        else
-        {
-            Log.d("PraxisGPS", "Magnetic sensor NOT found")
-        }
         return super.onMainCreate(activity)
-    }
-
-    override fun onSensorChanged(event: SensorEvent)
-    {
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            gravity = floatArrayOf(event.values[0], event.values[1], event.values[2])
-        }
-        if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-            magnetic = event.values
-            return
-        }
-
-        if (SensorManager.getRotationMatrix(R, I, gravity, magnetic))
-        {
-            var orientation = floatArrayOf(0f, 0f, 0f)
-            SensorManager.getOrientation(R, orientation)
-            //Some debounce math here so that we get some resistance to shaking
-            heading = ((heading * 0.7) + (0.3 * Math.toDegrees(orientation[0].toDouble()).toInt())).toInt()
-
-            if (event.timestamp - lastEmittedHeadingTime > 200000000) {
-                emitSignal(headingSignal.name, heading);
-                lastEmittedHeadingTime = event.timestamp
-            }
-        }
-        else
-        {
-            Log.d("PraxisGPS", "No heading detectable - get rotation matrix failed")
-        }
     }
 
     private fun getDisplayCompat(): Display? {
@@ -136,10 +102,6 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener, Se
         }
     }
 
-    override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
-        //Disregard, not concerned with this on a compass
-    }
-
     @TargetApi(Build.VERSION_CODES.O)
     @UsedByGodot
     fun StartListening(){
@@ -147,10 +109,17 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener, Se
         this.runOnUiThread() {
             locman.requestLocationUpdates("gps", 500, 0.5f, this);
         }
+
+        //Moved this here so it'll only get called once there's STUFF that exists.
+        Log.d("PraxisGPS", "create foreground service")
+        var intent = Intent(activity, TestForegroundService::class.java)
+        intent.putExtra("name", "Praxis Foreground Test")
+        activity?.startForegroundService(intent)
+        Log.d("PraxisGPS", "foreground service call started")
     }
 
     override fun getPluginSignals(): Set<SignalInfo> {
-        return setOf(locationUpdateSignal, lastKnownLocationSignal, errorSignal, headingSignal)
+        return setOf(locationUpdateSignal, lastKnownLocationSignal, errorSignal)
     }
 
     override fun getPluginMethods(): List<String> {
@@ -192,5 +161,4 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener, Se
     private fun emitError(signalInfo: SignalInfo, errorCodes: ErrorCodes) {
         emitSignal(signalInfo.name, errorCodes.errorCode, errorCodes.message)
     }
-
 }
