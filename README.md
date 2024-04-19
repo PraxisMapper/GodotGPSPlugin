@@ -77,11 +77,3 @@ The signal emitted by the plugin when a location update is detected.
 Sends back a dictionary with the following keys:
 
 latitude, longitude, accuracy, altitude, verticalAccuracyMeters, speed, time, bearing
-
-NOTE: bearing will indicate the actual direction of movement, whereas the value from onHeadingChange 
-reflects the direction the device is facing.
-
-## signal onHeadingChange (int)
-The signal emitted by the plugin to indicate the current heading.
-0 is north, 90 is east, -90 is west, south is 180 or -180. Turning from south-east to south-west will result in the compass spinning the long way around.
-This will fire approx. 5 times a second if the heading changes, will not emit if the value is the same as the previous one.
