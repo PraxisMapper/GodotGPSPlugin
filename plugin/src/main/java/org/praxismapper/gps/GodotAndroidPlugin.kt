@@ -19,6 +19,9 @@ import org.godotengine.godot.plugin.UsedByGodot
 class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener {
 
     //override fun getPluginName() = BuildConfig.GODOT_PLUGIN_NAME
+    var timeDelay: Long = 500
+    var distMin: Float = 0.5f
+    lateinit var lastLocation: Dictionary
 
     enum class ErrorCodes(val errorCode: Int, val message: String) {
         ACTIVITY_NOT_FOUND(100, "Godot Activity is null!"),
@@ -65,8 +68,35 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener {
     fun StartListening(){
         Log.d("PraxisGPS", "StartListening called")
         this.runOnUiThread() {
-            locman.requestLocationUpdates("gps", 500, 0.5f, this);
+            locman.requestLocationUpdates("gps", timeDelay, distMin, this);
         }
+        var startLoc = locman.getLastKnownLocation("gps")
+        if (startLoc != null)
+        {
+            Log.d("PraxisGPS", "Sending last known location")
+            onLocationChanged(startLoc)
+        }
+        else
+        {
+            Log.d("PraxisGPS", "No last known location, not updating app")
+        }
+    }
+
+    @UsedByGodot
+    fun SetMinTimeMs(newTime: Long)
+    {
+        timeDelay = newTime
+    }
+
+    @UsedByGodot
+    fun SetMinDistMeters(newDist: Float)
+    {
+        distMin = newDist
+    }
+
+    @UsedByGodot
+    fun GetLastLocation(): Dictionary {
+        return lastLocation
     }
 
     override fun getPluginSignals(): Set<SignalInfo> {
@@ -75,7 +105,10 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener {
 
     override fun getPluginMethods(): List<String> {
         return listOf(
-            "StartListening"
+            "StartListening",
+            "SetMinTimeMs",
+            "SetMinDistMeters",
+            "GetLastLocation"
         )
     }
 
@@ -90,7 +123,7 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener {
             var verticalAccuracyMeters = 0.0f
             val altitude = location.altitude.toFloat()
             val speed = location.speed
-            val time = location.time.toInt()
+            val time = location.time
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 verticalAccuracyMeters = location.verticalAccuracyMeters
             }
@@ -104,6 +137,7 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot), LocationListener {
             locationDictionary["speed"] = speed
             locationDictionary["time"] = time
             locationDictionary["bearing"] = bearing
+            lastLocation = locationDictionary
             emitSignal(locationUpdateSignal.name, locationDictionary)
 
     }
