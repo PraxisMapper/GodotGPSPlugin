@@ -31,7 +31,7 @@ open the folder in Android Studio, and click Build/Make Project, and drag the .a
 \plugin\build\outputs\aar to the \addons\PraxisMapperGPSPlugin folder of your Godot app.
 
 # Usager (in PraxisMapper games)
-This plugin is already configued and used in the PraxisMapper Godot Components. If you started your game from that template,
+This plugin is already configured and used in the PraxisMapper Godot Components. If you started your game from that template,
 you have nothing else to do here.
 
 # Usage (From Scratch)
@@ -39,6 +39,7 @@ you have nothing else to do here.
 * * If you are compiling the library yourself, you'll want to copy your built files from \plugin\build\outputs\aar to \addons\PraxisMapperGPSPlugin afterwards
 * Create an Android export template for your app, and ensure that the Coarse Location and Fine Locations permissions are checked.
 * In Godot, click Project\Project Settings, then Plugins, and check 'Enable' in the row for PraxisMapperGPSPlugin
+* If making a native Android build, you'll also need to Enable Gradle Builds in the Android Export preset settings.
 * Somewhere in your game, you will need to run code to load the plugin and activate similar to this:
 ```
 var gps_provider
